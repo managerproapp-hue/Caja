@@ -33,23 +33,32 @@ const App: React.FC = () => {
   const [categories, setCategories] = useState<string[]>(initialCategories);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   
-  const [isApiKeySet, setIsApiKeySet] = useState(false);
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
 
   const checkApiKey = useCallback(async () => {
+    setIsCheckingApiKey(true);
+    let keyFound = null;
     try {
         // @ts-ignore
         if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
             // @ts-ignore
             const hasKey = await window.aistudio.hasSelectedApiKey();
-            setIsApiKeySet(hasKey);
-        } else {
-            setIsApiKeySet(false); // aistudio might not be available
+            if (hasKey) {
+                keyFound = 'aistudio-managed';
+            }
+        }
+        
+        if (!keyFound) {
+            const storedKey = localStorage.getItem('gemini-api-key');
+            if (storedKey) {
+                keyFound = storedKey;
+            }
         }
     } catch (error) {
         console.error("Error checking API key:", error);
-        setIsApiKeySet(false);
     } finally {
+        setApiKey(keyFound);
         setIsCheckingApiKey(false);
     }
   }, []);
@@ -58,23 +67,24 @@ const App: React.FC = () => {
     checkApiKey();
   }, [checkApiKey]);
 
-  const handleSelectKey = async () => {
+  const handleSelectKeyInAiStudio = async () => {
      try {
         // @ts-ignore
-        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-            // @ts-ignore
-            await window.aistudio.openSelectKey();
-            // After user interaction, re-check the key status to be sure.
-            setIsCheckingApiKey(true); // Show loading while we re-verify
-            await checkApiKey();
-        } else {
-             alert("La función para seleccionar la clave de API no está disponible.");
-        }
+        await window.aistudio.openSelectKey();
+        await checkApiKey();
      } catch (error) {
         console.error("Error opening select key dialog:", error);
-        // If the user cancels or there's an error, the checkApiKey will handle the state.
         await checkApiKey();
      }
+  };
+
+  const handleManualApiKeySubmit = (manualKey: string) => {
+      if (manualKey && manualKey.trim()) {
+          localStorage.setItem('gemini-api-key', manualKey.trim());
+          setApiKey(manualKey.trim());
+      } else {
+          alert("Por favor, introduce una clave de API válida.");
+      }
   };
 
   const handleImportTransactions = (newTransactions: Transaction[]) => {
@@ -123,8 +133,11 @@ const App: React.FC = () => {
     return <LoadingSpinner />;
   }
   
-  if (!isApiKeySet) {
-    return <ApiKeySetup onSelectKey={handleSelectKey} />;
+  if (!apiKey) {
+    return <ApiKeySetup 
+              onSelectKeyInAiStudio={handleSelectKeyInAiStudio} 
+              onManualApiKeySubmit={handleManualApiKeySubmit} 
+           />;
   }
 
   const renderPage = () => {
@@ -147,6 +160,7 @@ const App: React.FC = () => {
                   existingTransactions={transactions}
                   availableCategories={categories}
                   bankAccounts={bankAccounts}
+                  apiKey={apiKey === 'aistudio-managed' ? (process.env.API_KEY as string) : apiKey}
                />;
       case 'database':
         return <Database

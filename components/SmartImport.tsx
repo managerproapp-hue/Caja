@@ -8,6 +8,7 @@ interface SmartImportProps {
   existingTransactions: Transaction[];
   availableCategories: string[];
   bankAccounts: BankAccount[];
+  apiKey: string;
 }
 
 type ImportPhase = 'upload' | 'loading' | 'review';
@@ -21,7 +22,7 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingTransactions, availableCategories, bankAccounts }) => {
+const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingTransactions, availableCategories, bankAccounts, apiKey }) => {
   const [phase, setPhase] = useState<ImportPhase>('upload');
   const [files, setFiles] = useState<File[]>([]);
   const [source, setSource] = useState('');
@@ -58,7 +59,7 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
           })
       );
       
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey });
 
       const uniqueCategories = [...new Set(existingTransactions.map(t => t.category).concat(availableCategories))];
       const fewShotExamples = existingTransactions.slice(-5).map(t => ({
