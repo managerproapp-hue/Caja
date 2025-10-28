@@ -114,9 +114,17 @@ const Backup: React.FC<BackupProps> = ({ transactions, categories, bankAccounts,
 
                 const data = JSON.parse(text) as BackupData;
                 
-                if (!Array.isArray(data.transactions) || !Array.isArray(data.categories) || !data.backupDate) {
+                // Robust validation for the backup file structure
+                if (
+                    !data || typeof data !== 'object' || data === null ||
+                    !Array.isArray(data.transactions) ||
+                    !Array.isArray(data.categories) ||
+                    (data.hasOwnProperty('bankAccounts') && !Array.isArray(data.bankAccounts)) ||
+                    typeof data.backupDate !== 'string' || !data.backupDate
+                ) {
                     throw new Error("El archivo de copia de seguridad no es válido o está corrupto.");
                 }
+
 
                 const restoredData: BackupData = {
                     ...data,

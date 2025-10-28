@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Welcome from './components/Welcome';
 import Dashboard from './components/Dashboard';
 import SmartImport from './components/SmartImport';
@@ -7,6 +7,7 @@ import Backup from './components/Backup';
 import Settings from './components/Settings';
 import Accounts from './components/Accounts';
 import AnnualComparison from './components/AnnualComparison';
+import ApiKeySetup from './components/ApiKeySetup';
 import { Transaction, BackupData, BankAccount } from './types';
 import { mockTransactions } from './data/mockData';
 
@@ -24,6 +25,29 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [categories, setCategories] = useState<string[]>(initialCategories);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [isApiKeySet, setIsApiKeySet] = useState(false);
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      // @ts-ignore
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        // @ts-ignore
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setIsApiKeySet(hasKey);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+     // @ts-ignore
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+        // Assume success and update state to show the app
+        setIsApiKeySet(true);
+    }
+  };
 
   const handleImportTransactions = (newTransactions: Transaction[]) => {
     setTransactions(prev => [...prev, ...newTransactions]);
@@ -66,6 +90,10 @@ const App: React.FC = () => {
   const navigateTo = (page: Page) => {
     setCurrentPage(page);
   };
+  
+  if (!isApiKeySet) {
+    return <ApiKeySetup onSelectKey={handleSelectKey} />;
+  }
 
   const renderPage = () => {
     switch (currentPage) {
