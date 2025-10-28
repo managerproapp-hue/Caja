@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Welcome from './components/Welcome';
 import Dashboard from './components/Dashboard';
 import SmartImport from './components/SmartImport';
@@ -19,34 +19,62 @@ const initialCategories = [
     'Salario', 'Freelance', 'Inversiones', 'Sin Categorizar'
 ];
 
+const LoadingSpinner = () => (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-400"></div>
+        <h2 className="text-2xl font-semibold text-white mt-6">Verificando configuración...</h2>
+    </div>
+);
+
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [categories, setCategories] = useState<string[]>(initialCategories);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  
   const [isApiKeySet, setIsApiKeySet] = useState(false);
+  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
 
-  useEffect(() => {
-    const checkApiKey = async () => {
-      // @ts-ignore
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+  const checkApiKey = useCallback(async () => {
+    try {
         // @ts-ignore
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        setIsApiKeySet(hasKey);
-      }
-    };
-    checkApiKey();
+        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+            // @ts-ignore
+            const hasKey = await window.aistudio.hasSelectedApiKey();
+            setIsApiKeySet(hasKey);
+        } else {
+            setIsApiKeySet(false); // aistudio might not be available
+        }
+    } catch (error) {
+        console.error("Error checking API key:", error);
+        setIsApiKeySet(false);
+    } finally {
+        setIsCheckingApiKey(false);
+    }
   }, []);
 
+  useEffect(() => {
+    checkApiKey();
+  }, [checkApiKey]);
+
   const handleSelectKey = async () => {
-     // @ts-ignore
-    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+     try {
         // @ts-ignore
-        await window.aistudio.openSelectKey();
-        // Assume success and update state to show the app
-        setIsApiKeySet(true);
-    }
+        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+            // @ts-ignore
+            await window.aistudio.openSelectKey();
+            // After user interaction, re-check the key status to be sure.
+            setIsCheckingApiKey(true); // Show loading while we re-verify
+            await checkApiKey();
+        } else {
+             alert("La función para seleccionar la clave de API no está disponible.");
+        }
+     } catch (error) {
+        console.error("Error opening select key dialog:", error);
+        // If the user cancels or there's an error, the checkApiKey will handle the state.
+        await checkApiKey();
+     }
   };
 
   const handleImportTransactions = (newTransactions: Transaction[]) => {
@@ -90,6 +118,10 @@ const App: React.FC = () => {
   const navigateTo = (page: Page) => {
     setCurrentPage(page);
   };
+  
+  if (isCheckingApiKey) {
+    return <LoadingSpinner />;
+  }
   
   if (!isApiKeySet) {
     return <ApiKeySetup onSelectKey={handleSelectKey} />;
