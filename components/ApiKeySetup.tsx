@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface ApiKeySetupProps {
-  onSelectKeyInAiStudio: () => void;
   onManualApiKeySubmit: (apiKey: string) => void;
 }
 
@@ -12,16 +11,8 @@ const KeyIcon = () => (
 );
 
 
-const ApiKeySetup: React.FC<ApiKeySetupProps> = ({ onSelectKeyInAiStudio, onManualApiKeySubmit }) => {
+const ApiKeySetup: React.FC<ApiKeySetupProps> = ({ onManualApiKeySubmit }) => {
   const [manualApiKey, setManualApiKey] = useState('');
-  const [isAiStudio, setIsAiStudio] = useState(false);
-
-  useEffect(() => {
-    // @ts-ignore
-    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-      setIsAiStudio(true);
-    }
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -37,47 +28,32 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({ onSelectKeyInAiStudio, onManu
         <h1 className="text-4xl font-bold text-white mb-3">
           Configuración Requerida
         </h1>
-        <p className="text-lg text-gray-300 mb-6">
+        <p className="text-lg text-gray-300 mb-4">
           Para activar las funciones de Inteligencia Artificial, como la importación automática, necesitas configurar tu clave de API de Google.
         </p>
-        
-        {isAiStudio ? (
-            <>
-                <p className="text-gray-400 mb-6">Estás en un entorno de Google AI Studio. Haz clic en el botón para seleccionar tu clave de forma segura.</p>
-                <button
-                  onClick={onSelectKeyInAiStudio}
-                  className="w-full flex items-center justify-center bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-lg shadow-violet-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"
-                >
-                  Configurar Clave de API
-                </button>
-            </>
-        ) : (
-            <>
-                <p className="text-gray-400 mb-4">
-                    Parece que estás ejecutando la aplicación fuera de Google AI Studio. Por favor, introduce tu clave de API manualmente.
-                </p>
-                 <p className="text-sm text-gray-400 mb-6">
-                    Puedes obtener tu clave gratuita desde <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline hover:text-violet-300">Google AI Studio</a>.
-                </p>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <input 
-                        type="text"
-                        value={manualApiKey}
-                        onChange={(e) => setManualApiKey(e.target.value)}
-                        placeholder="Pega tu clave de API aquí"
-                        className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 focus:ring-violet-500 focus:border-violet-500 text-center"
-                        aria-label="API Key Input"
-                    />
-                    <button
-                        type="submit"
-                        disabled={!manualApiKey.trim()}
-                        className="w-full flex items-center justify-center bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-lg shadow-violet-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                        Guardar y Continuar
-                    </button>
-                </form>
-            </>
-        )}
+        <p className="text-sm text-gray-400 mb-6">
+            Puedes obtener tu clave gratuita desde <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline hover:text-violet-300">Google AI Studio</a>.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <input 
+                type="text"
+                value={manualApiKey}
+                onChange={(e) => setManualApiKey(e.target.value)}
+                placeholder="Pega tu clave de API aquí"
+                className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 focus:ring-violet-500 focus:border-violet-500 text-center"
+                aria-label="API Key Input"
+            />
+            <button
+                type="submit"
+                disabled={!manualApiKey.trim()}
+                className="w-full flex items-center justify-center bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-lg shadow-violet-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed disabled:transform-none"
+            >
+                Guardar y Continuar
+            </button>
+        </form>
+        <p className="text-xs text-gray-500 mt-4">
+          Tu clave se guarda de forma segura en tu navegador y no se comparte con nadie.
+        </p>
       </div>
     </div>
   );

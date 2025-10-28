@@ -19,71 +19,28 @@ const initialCategories = [
     'Salario', 'Freelance', 'Inversiones', 'Sin Categorizar'
 ];
 
-const LoadingSpinner = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-violet-400"></div>
-        <h2 className="text-2xl font-semibold text-white mt-6">Verificando configuración...</h2>
-    </div>
-);
-
-
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [categories, setCategories] = useState<string[]>(initialCategories);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
-
-  const checkApiKey = useCallback(async () => {
-    setIsCheckingApiKey(true);
-    let keyFound = null;
-    try {
-        // @ts-ignore
-        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-            // @ts-ignore
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            if (hasKey) {
-                keyFound = 'aistudio-managed';
-            }
-        }
-        
-        if (!keyFound) {
-            const storedKey = localStorage.getItem('gemini-api-key');
-            if (storedKey) {
-                keyFound = storedKey;
-            }
-        }
-    } catch (error) {
-        console.error("Error checking API key:", error);
-    } finally {
-        setApiKey(keyFound);
-        setIsCheckingApiKey(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkApiKey();
-  }, [checkApiKey]);
-
-  const handleSelectKeyInAiStudio = async () => {
-     try {
-        // @ts-ignore
-        await window.aistudio.openSelectKey();
-        await checkApiKey();
-     } catch (error) {
-        console.error("Error opening select key dialog:", error);
-        await checkApiKey();
-     }
-  };
+  const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem('gemini-api-key'));
 
   const handleManualApiKeySubmit = (manualKey: string) => {
       if (manualKey && manualKey.trim()) {
-          localStorage.setItem('gemini-api-key', manualKey.trim());
-          setApiKey(manualKey.trim());
+          const trimmedKey = manualKey.trim();
+          localStorage.setItem('gemini-api-key', trimmedKey);
+          setApiKey(trimmedKey);
       } else {
           alert("Por favor, introduce una clave de API válida.");
+      }
+  };
+  
+  const handleApiKeyReset = () => {
+      if (window.confirm("¿Estás seguro? Esto eliminará tu clave de API guardada y tendrás que volver a configurarla.")) {
+          localStorage.removeItem('gemini-api-key');
+          setApiKey(null);
       }
   };
 
@@ -129,13 +86,8 @@ const App: React.FC = () => {
     setCurrentPage(page);
   };
   
-  if (isCheckingApiKey) {
-    return <LoadingSpinner />;
-  }
-  
   if (!apiKey) {
     return <ApiKeySetup 
-              onSelectKeyInAiStudio={handleSelectKeyInAiStudio} 
               onManualApiKeySubmit={handleManualApiKeySubmit} 
            />;
   }
@@ -152,10 +104,10 @@ const App: React.FC = () => {
                   onNavigateToSettings={() => navigateTo('settings')}
                   onNavigateToAccounts={() => navigateTo('accounts')}
                   onNavigateToAnnualComparison={() => navigateTo('annual-comparison')}
+                  onApiKeyReset={handleApiKeyReset}
                />;
       case 'import':
-        const resolvedApiKey = apiKey === 'aistudio-managed' ? (process.env.API_KEY as string) : apiKey;
-        if (!resolvedApiKey) {
+        if (!apiKey) { // Double check for safety
             return (
                 <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
                     <h2 className="text-2xl font-semibold text-red-400">Error Crítico</h2>
@@ -169,7 +121,7 @@ const App: React.FC = () => {
                   existingTransactions={transactions}
                   availableCategories={categories}
                   bankAccounts={bankAccounts}
-                  apiKey={resolvedApiKey}
+                  apiKey={apiKey}
                />;
       case 'database':
         return <Database

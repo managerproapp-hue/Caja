@@ -42,9 +42,20 @@ interface DashboardProps {
     onNavigateToSettings: () => void;
     onNavigateToAccounts: () => void;
     onNavigateToAnnualComparison: () => void;
+    onApiKeyReset: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigateToWelcome, onNavigateToImport, onNavigateToDatabase, onNavigateToBackup, onNavigateToSettings, onNavigateToAccounts, onNavigateToAnnualComparison }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+    transactions, 
+    onNavigateToWelcome, 
+    onNavigateToImport, 
+    onNavigateToDatabase, 
+    onNavigateToBackup, 
+    onNavigateToSettings, 
+    onNavigateToAccounts, 
+    onNavigateToAnnualComparison,
+    onApiKeyReset 
+}) => {
     const data = processDataForDashboard(transactions);
 
     const formatCurrency = (value: number) => {
@@ -53,9 +64,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigateToWelcome
 
     return (
         <main className="p-4 sm:p-6 lg:p-8">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <h1 className="text-3xl font-bold text-white">Panel de Control</h1>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-wrap gap-2">
                      <button 
                         onClick={onNavigateToAnnualComparison}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-indigo-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"
@@ -91,6 +102,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigateToWelcome
                         className="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-violet-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"
                     >
                         Importar Datos
+                    </button>
+                    <button 
+                        onClick={onApiKeyReset}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-red-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    >
+                        Resetear API Key
                     </button>
                     <button 
                         onClick={onNavigateToWelcome}
