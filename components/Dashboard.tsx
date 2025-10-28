@@ -40,9 +40,11 @@ interface DashboardProps {
     onNavigateToDatabase: () => void;
     onNavigateToBackup: () => void;
     onNavigateToSettings: () => void;
+    onNavigateToAccounts: () => void;
+    onNavigateToAnnualComparison: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigateToWelcome, onNavigateToImport, onNavigateToDatabase, onNavigateToBackup, onNavigateToSettings }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigateToWelcome, onNavigateToImport, onNavigateToDatabase, onNavigateToBackup, onNavigateToSettings, onNavigateToAccounts, onNavigateToAnnualComparison }) => {
     const data = processDataForDashboard(transactions);
 
     const formatCurrency = (value: number) => {
@@ -54,6 +56,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigateToWelcome
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-white">Panel de Control</h1>
                 <div className="flex items-center space-x-2">
+                     <button 
+                        onClick={onNavigateToAnnualComparison}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-indigo-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    >
+                        Comparativa Anual
+                    </button>
+                     <button 
+                        onClick={onNavigateToAccounts}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-blue-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"
+                    >
+                        Cuentas Bancarias
+                    </button>
                     <button 
                         onClick={onNavigateToSettings}
                         className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-gray-600/30 transform hover:scale-105 transition-all duration-300 ease-in-out"

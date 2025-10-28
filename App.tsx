@@ -5,10 +5,12 @@ import SmartImport from './components/SmartImport';
 import Database from './components/Database';
 import Backup from './components/Backup';
 import Settings from './components/Settings';
-import { Transaction, BackupData } from './types';
+import Accounts from './components/Accounts';
+import AnnualComparison from './components/AnnualComparison';
+import { Transaction, BackupData, BankAccount } from './types';
 import { mockTransactions } from './data/mockData';
 
-type Page = 'welcome' | 'dashboard' | 'import' | 'database' | 'backup' | 'settings';
+type Page = 'welcome' | 'dashboard' | 'import' | 'database' | 'backup' | 'settings' | 'accounts' | 'annual-comparison';
 
 const initialCategories = [
     'Supermercado', 'Gasolina', 'Ocio', 'Servicios', 'Salud', 
@@ -21,6 +23,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('welcome');
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [categories, setCategories] = useState<string[]>(initialCategories);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
 
   const handleImportTransactions = (newTransactions: Transaction[]) => {
     setTransactions(prev => [...prev, ...newTransactions]);
@@ -30,6 +33,7 @@ const App: React.FC = () => {
   const handleRestoreBackup = (data: BackupData) => {
     setTransactions(data.transactions);
     setCategories(data.categories);
+    setBankAccounts(data.bankAccounts || []); // Handle backups without accounts
     alert(`Copia de seguridad restaurada con éxito. Se cargaron ${data.transactions.length} transacciones.`);
     setCurrentPage('dashboard');
   }
@@ -50,6 +54,15 @@ const App: React.FC = () => {
     setCategories(prev => prev.filter(c => c !== categoryToDelete));
   };
 
+  const handleAddBankAccount = (account: Omit<BankAccount, 'id'>) => {
+      const newAccount: BankAccount = { ...account, id: `account-${Date.now()}` };
+      setBankAccounts(prev => [...prev, newAccount]);
+  };
+
+  const handleDeleteBankAccount = (accountId: string) => {
+      setBankAccounts(prev => prev.filter(acc => acc.id !== accountId));
+  };
+
   const navigateTo = (page: Page) => {
     setCurrentPage(page);
   };
@@ -64,6 +77,8 @@ const App: React.FC = () => {
                   onNavigateToDatabase={() => navigateTo('database')}
                   onNavigateToBackup={() => navigateTo('backup')}
                   onNavigateToSettings={() => navigateTo('settings')}
+                  onNavigateToAccounts={() => navigateTo('accounts')}
+                  onNavigateToAnnualComparison={() => navigateTo('annual-comparison')}
                />;
       case 'import':
         return <SmartImport 
@@ -71,6 +86,7 @@ const App: React.FC = () => {
                   onCancel={() => navigateTo('dashboard')}
                   existingTransactions={transactions}
                   availableCategories={categories}
+                  bankAccounts={bankAccounts}
                />;
       case 'database':
         return <Database
@@ -81,6 +97,7 @@ const App: React.FC = () => {
         return <Backup
                   transactions={transactions}
                   categories={categories}
+                  bankAccounts={bankAccounts}
                   onRestore={handleRestoreBackup}
                   onNavigateBack={() => navigateTo('dashboard')}
                 />;
@@ -90,7 +107,19 @@ const App: React.FC = () => {
                   onAddCategory={handleAddCategory}
                   onDeleteCategory={handleDeleteCategory}
                   onNavigateBack={() => navigateTo('dashboard')}
-                />
+                />;
+      case 'accounts':
+        return <Accounts
+                    accounts={bankAccounts}
+                    onAddAccount={handleAddBankAccount}
+                    onDeleteAccount={handleDeleteBankAccount}
+                    onNavigateBack={() => navigateTo('dashboard')}
+                />;
+      case 'annual-comparison':
+        return <AnnualComparison
+                    transactions={transactions}
+                    onNavigateBack={() => navigateTo('dashboard')}
+                />;
       case 'welcome':
       default:
         return <Welcome onNavigate={() => navigateTo('dashboard')} />;

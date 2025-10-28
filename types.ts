@@ -11,11 +11,25 @@ export interface Transaction {
   source?: string; // ej: 'BBVA', 'Santander', el origen de los datos de la transacción
 }
 
+export interface BankAccount {
+    id: string;
+    bankName: string; // e.g., 'Cajamar', 'BBVA'
+    accountName: string; // e.g., 'Cuenta Nómina', 'Ahorros'
+    accountNumber: string; // e.g., IBAN
+}
+
 export interface MonthlyData {
   month: string;
   income: number;
   expenses: number;
   netMargin: number;
+}
+
+export interface AnnualComparisonData {
+    year: number;
+    income: number;
+    expenses: number;
+    netMargin: number;
 }
 
 export interface CategoryData {
@@ -58,5 +72,6 @@ export interface ReviewTransaction extends AnalyzedTransaction {
 export interface BackupData {
     transactions: Transaction[];
     categories: string[];
+    bankAccounts: BankAccount[];
     backupDate: string;
 }

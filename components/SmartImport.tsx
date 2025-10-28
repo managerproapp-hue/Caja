@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Transaction, ReviewTransaction, AIResponse } from '../types';
+import { Transaction, ReviewTransaction, AIResponse, BankAccount } from '../types';
 import { GoogleGenAI, Type } from '@google/genai';
 
 interface SmartImportProps {
@@ -7,11 +7,12 @@ interface SmartImportProps {
   onCancel: () => void;
   existingTransactions: Transaction[];
   availableCategories: string[];
+  bankAccounts: BankAccount[];
 }
 
 type ImportPhase = 'upload' | 'loading' | 'review';
 
-const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingTransactions, availableCategories }) => {
+const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingTransactions, availableCategories, bankAccounts }) => {
   const [phase, setPhase] = useState<ImportPhase>('upload');
   const [files, setFiles] = useState<File[]>([]);
   const [source, setSource] = useState('');
@@ -38,7 +39,7 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
 
   const handleAnalyze = async () => {
     if (files.length === 0 || !source) {
-      setError('La fuente y al menos un archivo son obligatorios.');
+      setError('La cuenta de origen y al menos un archivo son obligatorios.');
       return;
     }
     setError(null);
@@ -57,12 +58,14 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
           categoria: t.category,
       }));
 
+      const selectedAccount = bankAccounts.find(acc => acc.accountName === source);
+
       const prompt = `
         Eres un experto en procesar datos financieros de extractos bancarios de texto plano.
         Tu tarea es analizar el texto proporcionado, extraer cada transacción y clasificarla.
         
         **Contexto del Usuario:**
-        - Fuente de los datos: ${source}
+        - Fuente de los datos (Cuenta): ${selectedAccount?.bankName} - ${selectedAccount?.accountName} (${selectedAccount?.accountNumber})
         - Contexto adicional: ${context || 'No proporcionado'}
         - Lista de categorías de gastos disponibles: ${uniqueCategories.join(', ')}
         
@@ -74,7 +77,7 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
         1. Normaliza los datos: convierte fechas a formato 'YYYY-MM-DD', y asegúrate de que los importes sean números.
         2. Identifica transacciones: Cada transacción tiene fecha, descripción e importe.
         3. Clasifica el tipo: Importes negativos o que indiquen un pago son 'gasto'. Importes positivos son 'ingreso'. Para ingresos, la categoría suele ser 'Salario', 'Freelance', 'Inversiones', etc.
-        4. Asigna Categoría: Para cada gasto, asigna la categoría más lógica de la lista proporcionada. Si la descripción es similar a un ejemplo histórico, usa la misma categoría. Para ingresos, usa una categoría descriptiva como "Ingreso por Salario" o "Ingreso Varios".
+        4. Asigna Categoría: Para cada gasto, asigna la categoría más lógica de la lista proporcionada. Si la descripción es similar a un ejemplo histórico, usa la misma categoría. Para ingresos, usa una categoría descriptiva como "Ingreso por Salario" o "Ingreso Varios". Si no estás seguro, usa 'Sin Categorizar'.
         5. Manejo de errores: Si una línea no parece ser una transacción válida, ignórala y repórtala en la sección de 'errores'.
         
         **Datos Crudos del Extracto:**
@@ -171,7 +174,7 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
         <h1 className="text-3xl font-bold text-white mb-6">Revisar y Confirmar Importación</h1>
         
         <div className="bg-gray-800 rounded-2xl shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Transacciones Identificadas</h2>
+            <h2 className="text-xl font-semibold mb-4">Transacciones Identificadas de: <span className="text-violet-400">{source}</span></h2>
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>
@@ -198,10 +201,7 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
                                         onChange={(e) => handleCategoryChange(t.id, e.target.value)}
                                         className="bg-gray-700 border border-gray-600 rounded-md p-2 w-full focus:ring-violet-500 focus:border-violet-500"
                                     >
-                                        {t.tipo === 'gasto' ? 
-                                            availableCategories.map(c => <option key={c} value={c}>{c}</option>) :
-                                            <option>{t.categoriaSugerida}</option>
-                                        }
+                                        {[...new Set(['Sin Categorizar', ...availableCategories])].map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </td>
                             </tr>
@@ -238,8 +238,19 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="source" className="block text-sm font-medium text-gray-300 mb-1">Fuente (Obligatorio)</label>
-            <input type="text" id="source" value={source} onChange={e => setSource(e.target.value)} placeholder="Ej: Cuenta Corriente BBVA" className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:ring-violet-500 focus:border-violet-500" />
+            <label htmlFor="source" className="block text-sm font-medium text-gray-300 mb-1">Cuenta de Origen (Obligatorio)</label>
+            <select 
+              id="source" 
+              value={source} 
+              onChange={e => setSource(e.target.value)} 
+              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 focus:ring-violet-500 focus:border-violet-500"
+            >
+              <option value="" disabled>Selecciona una cuenta</option>
+              {bankAccounts.map(account => (
+                <option key={account.id} value={account.accountName}>{account.accountName} ({account.bankName})</option>
+              ))}
+            </select>
+            {bankAccounts.length === 0 && <p className="text-xs text-yellow-400 mt-1">No hay cuentas bancarias. Añade una desde el panel de Cuentas Bancarias.</p>}
           </div>
           <div>
             <label htmlFor="context" className="block text-sm font-medium text-gray-300 mb-1">Contexto Adicional (Opcional)</label>
