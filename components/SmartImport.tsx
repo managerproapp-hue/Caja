@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Transaction, ReviewTransaction, AIResponse, BankAccount } from '../types';
 import { GoogleGenAI, Type } from '@google/genai';
 
@@ -11,6 +11,15 @@ interface SmartImportProps {
 }
 
 type ImportPhase = 'upload' | 'loading' | 'review';
+
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = (error) => reject(error);
+    });
+};
 
 const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingTransactions, availableCategories, bankAccounts }) => {
   const [phase, setPhase] = useState<ImportPhase>('upload');
@@ -28,15 +37,6 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
     }
   };
 
-  const readFileAsText = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsText(file);
-    });
-  };
-
   const handleAnalyze = async () => {
     if (files.length === 0 || !source) {
       setError('La cuenta de origen y al menos un archivo son obligatorios.');
@@ -46,8 +46,17 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
     setPhase('loading');
 
     try {
-      const fileContents = await Promise.all(files.map(readFileAsText));
-      const combinedText = fileContents.join('\n\n--- FIN DE ARCHIVO ---\n\n');
+      const fileParts = await Promise.all(
+          files.map(async (file) => {
+              const base64Data = await fileToBase64(file);
+              return {
+                  inlineData: {
+                      mimeType: file.type,
+                      data: base64Data,
+                  },
+              };
+          })
+      );
       
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
@@ -61,8 +70,8 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
       const selectedAccount = bankAccounts.find(acc => acc.accountName === source);
 
       const prompt = `
-        Eres un experto en procesar datos financieros de extractos bancarios de texto plano.
-        Tu tarea es analizar el texto proporcionado, extraer cada transacción y clasificarla.
+        Eres un experto en procesar datos financieros de extractos bancarios de varios formatos de archivo (PDF, Excel, CSV, texto plano).
+        Tu tarea es analizar los archivos proporcionados, extraer cada transacción y clasificarla.
         
         **Contexto del Usuario:**
         - Fuente de los datos (Cuenta): ${selectedAccount?.bankName} - ${selectedAccount?.accountName} (${selectedAccount?.accountNumber})
@@ -74,21 +83,19 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
         ${JSON.stringify(fewShotExamples, null, 2)}
 
         **Instrucciones:**
-        1. Normaliza los datos: convierte fechas a formato 'YYYY-MM-DD', y asegúrate de que los importes sean números.
-        2. Identifica transacciones: Cada transacción tiene fecha, descripción e importe.
-        3. Clasifica el tipo: Importes negativos o que indiquen un pago son 'gasto'. Importes positivos son 'ingreso'. Para ingresos, la categoría suele ser 'Salario', 'Freelance', 'Inversiones', etc.
-        4. Asigna Categoría: Para cada gasto, asigna la categoría más lógica de la lista proporcionada. Si la descripción es similar a un ejemplo histórico, usa la misma categoría. Para ingresos, usa una categoría descriptiva como "Ingreso por Salario" o "Ingreso Varios". Si no estás seguro, usa 'Sin Categorizar'.
-        5. Manejo de errores: Si una línea no parece ser una transacción válida, ignórala y repórtala en la sección de 'errores'.
+        1. Procesa los archivos adjuntos. Pueden ser PDF, XLS, XLSX, CSV o TXT.
+        2. Normaliza los datos: convierte fechas a formato 'YYYY-MM-DD', y asegúrate de que los importes sean números.
+        3. Identifica transacciones: Cada transacción tiene fecha, descripción e importe.
+        4. Clasifica el tipo: Importes negativos o que indiquen un pago son 'gasto'. Importes positivos son 'ingreso'. Para ingresos, la categoría suele ser 'Salario', 'Freelance', 'Inversiones', etc.
+        5. Asigna Categoría: Para cada gasto, asigna la categoría más lógica de la lista proporcionada. Si la descripción es similar a un ejemplo histórico, usa la misma categoría. Para ingresos, usa una categoría descriptiva como "Ingreso por Salario" o "Ingreso Varios". Si no estás seguro, usa 'Sin Categorizar'.
+        6. Manejo de errores: Si una línea o entrada en un archivo no parece ser una transacción válida, ignórala y repórtala en la sección de 'errores'.
         
-        **Datos Crudos del Extracto:**
-        ---
-        ${combinedText}
-        ---
+        Analiza los archivos y devuelve el JSON estructurado como se te ha indicado.
       `;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: { parts: [{ text: prompt }, ...fileParts] },
         config: {
           responseMimeType: 'application/json',
           responseSchema: {
@@ -234,7 +241,7 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
     <div className="flex items-center justify-center min-h-screen p-4">
       <div className="max-w-2xl w-full bg-gray-800 p-8 rounded-2xl shadow-2xl">
         <h1 className="text-3xl font-bold text-white mb-2">Importación Inteligente de Datos</h1>
-        <p className="text-gray-400 mb-6">Sube tus extractos bancarios (CSV, TXT) y deja que la IA organice tus transacciones.</p>
+        <p className="text-gray-400 mb-6">Sube tus extractos bancarios (PDF, XLS, CSV, TXT) y deja que la IA organice tus transacciones.</p>
 
         <div className="space-y-4">
           <div>
@@ -264,11 +271,11 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
                 <div className="flex text-sm text-gray-400">
                   <label htmlFor="file-upload" className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-violet-400 hover:text-violet-500 focus-within:outline-none">
                     <span>Selecciona un archivo</span>
-                    <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept=".txt,.csv" />
+                    <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple onChange={handleFileChange} accept=".txt,.csv,.xls,.xlsx,.pdf" />
                   </label>
                   <p className="pl-1">o arrástralo aquí</p>
                 </div>
-                <p className="text-xs text-gray-500">TXT, CSV</p>
+                <p className="text-xs text-gray-500">PDF, XLS, XLSX, CSV, TXT</p>
               </div>
             </div>
              {files.length > 0 && <div className="mt-2 text-sm text-gray-300">{files.map(f => f.name).join(', ')}</div>}
