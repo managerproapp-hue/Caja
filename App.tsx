@@ -154,13 +154,22 @@ const App: React.FC = () => {
                   onNavigateToAnnualComparison={() => navigateTo('annual-comparison')}
                />;
       case 'import':
+        const resolvedApiKey = apiKey === 'aistudio-managed' ? (process.env.API_KEY as string) : apiKey;
+        if (!resolvedApiKey) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+                    <h2 className="text-2xl font-semibold text-red-400">Error Crítico</h2>
+                    <p className="text-gray-400 mt-2">La clave de API no está disponible. Por favor, recarga la página e inténtalo de nuevo.</p>
+                </div>
+            );
+        }
         return <SmartImport 
                   onImport={handleImportTransactions} 
                   onCancel={() => navigateTo('dashboard')}
                   existingTransactions={transactions}
                   availableCategories={categories}
                   bankAccounts={bankAccounts}
-                  apiKey={apiKey === 'aistudio-managed' ? (process.env.API_KEY as string) : apiKey}
+                  apiKey={resolvedApiKey}
                />;
       case 'database':
         return <Database

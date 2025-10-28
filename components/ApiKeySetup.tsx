@@ -61,7 +61,7 @@ const ApiKeySetup: React.FC<ApiKeySetupProps> = ({ onSelectKeyInAiStudio, onManu
                 </p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input 
-                        type="password"
+                        type="text"
                         value={manualApiKey}
                         onChange={(e) => setManualApiKey(e.target.value)}
                         placeholder="Pega tu clave de API aquí"

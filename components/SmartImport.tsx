@@ -43,6 +43,11 @@ const SmartImport: React.FC<SmartImportProps> = ({ onImport, onCancel, existingT
       setError('La cuenta de origen y al menos un archivo son obligatorios.');
       return;
     }
+     if (!apiKey) {
+      setError("Error de configuración: La clave de API no fue proporcionada al componente de importación. Vuelve a configurar la clave.");
+      setPhase('upload');
+      return;
+    }
     setError(null);
     setPhase('loading');
 
